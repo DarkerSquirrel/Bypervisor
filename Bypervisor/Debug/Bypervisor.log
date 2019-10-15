@@ -1,0 +1,5 @@
+﻿  Building 'Bypervisor' with toolset 'WindowsKernelModeDriver10.0' and the 'Desktop' target platform.
+  Stamping Debug\Bypervisor.inf
+  Stamping [Version] section with DriverVer=10/15/2019,14.38.4.257
+  Bypervisor.c
+Z:\Projects\Bypervisor\Bypervisor\Bypervisor.c(20,34): error C4013:  'InitialiseHypervisor' undefined; assuming extern returning int
