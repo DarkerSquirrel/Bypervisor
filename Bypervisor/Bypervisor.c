@@ -25,7 +25,7 @@ BOOLEAN ProbeVtx()
     }
 
     // Check Out-of-SMX operation of IA32_FEATURE_CONTROL (b2)
-    if (!((FeatureControl >> 2) & 0x1))
+    if (!(FeatureControl & 0x40))
     {
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "VT-x not supported outside of SMX.\n");
         goto Exit;
@@ -62,6 +62,8 @@ NTSTATUS SetupVtx()
     BypervisorContext->SystemProcessorCount = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
 
     ASSERT(BypervisorContext->SystemProcessorCount > 0);
+
+    BypervisorContext->SystemDirectoryTableBase = __readcr3();
 
     Status = STATUS_SUCCESS;
 

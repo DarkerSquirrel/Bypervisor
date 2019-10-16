@@ -140,8 +140,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Bypervisor.c" />
+    <ClCompile Include="Entry.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Bypervisor.h" />
+    <ClInclude Include="ia32.h" />
     <ClInclude Include="Shared.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

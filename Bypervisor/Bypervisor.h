@@ -8,7 +8,11 @@
 #define BYPERVISOR_PAGEDPOOL_TAG    'ppyB'
 
 // 16 MB
-#define VMM_HOST_STACK_SIZE 0x1000000
+#define VMM_HOST_STACK_SIZE         0x1000000
+
+// Standard sizes for PML4 (No PSE)
+#define PAGE_TABLE_SIZE             (1 << 9)
+#define PAGE_TABLE_ENTRY_SIZE       (1 << 12)
 
 typedef VMCS*           PVMCS;
 typedef VMX_MSR_BITMAP* PMSRBMAP;
@@ -28,7 +32,7 @@ typedef struct _VMM_CONTEXT
 
 typedef struct _VMM_HOST_STACK
 {
-    UINT8   Stack[VMM_HOST_STACK_SIZE];
+    UINT8 Stack[VMM_HOST_STACK_SIZE];
 } VMM_HOST_STACK, *PVMM_HOST_STACK;
 
 typedef struct _REG_CAPTURE
@@ -51,13 +55,6 @@ typedef struct _REG_CAPTURE
     REG64 r14;
     REG64 r15;
 
-    SEGMENT_SELECTOR cs;
-    SEGMENT_SELECTOR ds;
-    SEGMENT_SELECTOR es;
-    SEGMENT_SELECTOR fs;
-    SEGMENT_SELECTOR gs;
-    SEGMENT_SELECTOR ss;
-
     REG64 dr0;
     REG64 dr1;
     REG64 dr2;
@@ -66,6 +63,13 @@ typedef struct _REG_CAPTURE
     REG64 dr7;
 
     REG64 rflags;
+
+    SEGMENT_SELECTOR cs;
+    SEGMENT_SELECTOR ds;
+    SEGMENT_SELECTOR es;
+    SEGMENT_SELECTOR fs;
+    SEGMENT_SELECTOR gs;
+    SEGMENT_SELECTOR ss;
 } REG_CAPTURE, *PREG_CAPTURE;
 
 typedef struct _REG_SPEC_CAPTURE
@@ -78,10 +82,10 @@ typedef struct _REG_SPEC_CAPTURE
 
 typedef struct _EPT_PAGE_TABLE
 {
-    PPML4   Pml4;
-    PPDPTE  pPdpt;
-    PPDE    pPde;
-    PPTE    pPte;
+    PML4E_64  Pml4[PAGE_TABLE_SIZE];
+    PDPTE_64  Pdpt[PAGE_TABLE_SIZE];
+    PDE_64    Pde[PAGE_TABLE_SIZE];
+    PTE_64    Pte[PAGE_TABLE_ENTRY_SIZE];
 } EPT_PAGE_TABLE, *PEPT_PAGE_TABLE;
 
 typedef struct _VMM_PER_PROC_CONTEXT
@@ -95,4 +99,5 @@ typedef struct _VMM_PER_PROC_CONTEXT
     REG_SPEC_CAPTURE RegisterSpecCapture;
     PEPT_PAGE_TABLE  pEpt;
     PVOID            pPhysEpt;
+    PVMM_CONTEXT     pVmmContext;
 };
