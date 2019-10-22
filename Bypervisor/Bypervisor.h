@@ -23,11 +23,19 @@ typedef PDPTE_64*       PPDPTE;
 typedef PDE_64*         PPDE;
 typedef PTE_64*         PPTE;
 
+typedef struct _VMX_ON_REGION
+{
+	UINT32 RevisionNumber;
+} VMX_ON_REGION, *PVMX_ON_REGION;
+
 typedef struct _VMM_CONTEXT
 {
-    UINT32  SystemProcessorCount;
-    UINT32  ProcessorsInitialised;
-    PVOID   SystemDirectoryTableBase;
+    UINT32			SystemProcessorCount;
+    UINT32			ProcessorsInitialised;
+    ULONG64			SystemDirectoryTableBase;
+
+	DECLSPEC_ALIGN(PAGE_SIZE) 
+	PVMX_ON_REGION	pVmxOnRegion;
 } VMM_CONTEXT, *PVMM_CONTEXT;
 
 typedef struct _VMM_HOST_STACK
