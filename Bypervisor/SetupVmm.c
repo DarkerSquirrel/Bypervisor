@@ -11,7 +11,9 @@ BOOLEAN ProbeVtx()
 
     if (!(CpuIdOut[2] & 0x20))
     {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "VT-x not supported.\n");
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID,
+            DPFLTR_ERROR_LEVEL,
+            "VT-x not supported.\n");
         goto Exit;
     }
 
@@ -20,14 +22,18 @@ BOOLEAN ProbeVtx()
     // Check LOCK bit of IA32_FEATURE_CONTROL (b0)
     if (!(FeatureControl & 0x1))
     {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Feature control MSR - Lock bit not set.\n");
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID,
+            DPFLTR_ERROR_LEVEL,
+            "Feature control MSR - Lock bit not set.\n");
         goto Exit;
     }
 
     // Check Out-of-SMX operation of IA32_FEATURE_CONTROL (b2)
     if (!(FeatureControl & 0x40))
     {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "VT-x not supported outside of SMX.\n");
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID,
+            DPFLTR_ERROR_LEVEL,
+            "VT-x not supported outside of SMX.\n");
         goto Exit;
     }
 
@@ -37,71 +43,97 @@ Exit:
     return Status;
 }
 
-IA32_VMX_BASIC_REGISTER GetVmxBasicRegister()
+BOOLEAN SetupVmcs(PVMM_PER_PROC_CONTEXT pContext)
 {
-	IA32_VMX_BASIC_REGISTER VmxBasicRegister;
-	VmxBasicRegister.Flags = __readmsr(IA32_VMX_BASIC);
-	return VmxBasicRegister;
+    pContext->Vmcs.RevisionId = pContext->MsrRegisters.Basic.VmcsRevisionId;
+    pContext->Vmcs.RevisionId &= ~(1 << 31);
+
+    __vmx_vmwrite(VMCS_GUEST_VMCS_LINK_POINTER, ~0);
 }
 
-NTSTATUS SetupVmxOnRegion(PVMM_CONTEXT pVmmContext)
+BOOLEAN EnterVmxOperation(PVMM_PER_PROC_CONTEXT pContext)
 {
-	PVMX_ON_REGION pVmxOnRegion = ExAllocatePoolWithTag(NonPagedPoolNx, 
-		sizeof(VMX_ON_REGION), 
-		BYPERVISOR_NONPAGEDPOOL_TAG);
+    // Set CR4.VMXE
+	__writecr4((__readcr4() | CR4_VMX_ENABLE_BIT));
 
-	if (pVmxOnRegion == NULL)
-	{
-		DbgPrintEx(DPFLTR_IHVDRIVER_ID,
-			DPFLTR_ERROR_LEVEL,
-			"SetupVmxOnRegion: No more NonPagedPool memory.\n");
-		return STATUS_NO_MEMORY;
-	}
+    // Do the fixed bits junk
+    REG64 cr0 = __readcr0();
+    REG64 cr4 = __readcr4();
 
-	pVmxOnRegion->RevisionNumber = GetVmxBasicRegister().VmcsRevisionId;
-	pVmmContext->pVmxOnRegion = pVmxOnRegion;
+    // It is the OTHER WAY AROUND
+    // Intel? Why?
+    // You would think that the 1 bits in "fixedcr0_0" MSR
+    // would tell you which bits to fix to 0 in cr0.
+    // And the 1 bits in "fixedcr0_1" MSR 
+    // would tell you which bits to fix to 1 in cr0.
+    // But nah. 1s in cr0_0 are fixed to 1s and 
+    // 0s in cr0_1 are the ones fixed to 0.
+    // huh.png
+    cr0 |= pContext->MsrRegisters.FixedCr0_0;
+    cr0 &= pContext->MsrRegisters.FixedCr0_1;
+    cr4 |= pContext->MsrRegisters.FixedCr4_0;
+    cr4 &= pContext->MsrRegisters.FixedCr4_1;
 
-	return STATUS_SUCCESS;
+    __writecr0(cr0);
+    __writecr4(cr4);
+
+    if (__vmx_on(&pContext->PhysPVmxOn))
+    {
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID,
+            DPFLTR_ERROR_LEVEL,
+            "EnterVmxOperation: Vmxon failed.\n");
+        return FALSE;
+    };
+
+    if (__vmx_vmclear(&pContext->PhysPVmcs))
+    {
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID,
+            DPFLTR_ERROR_LEVEL,
+            "EnterVmxOperation: Vmxclear failed.\n");
+        __vmx_off();
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
-VOID SetupFixedControlBits()
+NTSTATUS InitialiseProcessorVmx()
 {
-	UINT64 FixedCr0_0 = __readmsr(IA32_VMX_CR0_FIXED0);
-	UINT64 FixedCr0_1 = __readmsr(IA32_VMX_CR0_FIXED1);
-	UINT64 FixedCr4_0 = __readmsr(IA32_VMX_CR4_FIXED0);
-	UINT64 FixedCr4_1 = __readmsr(IA32_VMX_CR4_FIXED1);
+    PVMM_PER_PROC_CONTEXT pContext = ExAllocatePoolWithTag(NonPagedPoolNx, 
+        sizeof(VMM_PER_PROC_CONTEXT),
+        BYPERVISOR_NONPAGEDPOOL_TAG);
 
-	UINT64 FinalCr0 = __readcr0();
-	FinalCr0 &= ~FixedCr0_0;
-	FinalCr0 |= FixedCr0_1;
-	__writecr0(FinalCr0);
+    if (pContext == NULL)
+    {
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, 
+            DPFLTR_ERROR_LEVEL,
+            "InitialiseProcessorVmx: ExAllocatePoolWithTag failed.\n");
+        return STATUS_NO_MEMORY;
+    }
 
-	UINT64 FinalCr4 = __readcr4();
-	FinalCr4 &= ~FixedCr4_0;
-	FinalCr4 |= FixedCr4_1;
-	__writecr4(FinalCr4);
-}
+    RtlZeroMemory(pContext, sizeof(pContext));
 
-NTSTATUS EnterVmxOperation(PVMM_CONTEXT pVmmContext)
-{
-	NTSTATUS Status = STATUS_SUCCESS;
+    // Read the IA32_VMX capability registers
+    for (UINT32 i = 0;
+        i < sizeof(pContext->MsrRegisters.Registers) /
+        sizeof(pContext->MsrRegisters.Registers[0]); i++)
+    {
+        pContext->MsrRegisters.Registers[i] = __readmsr(IA32_VMX_BASIC + i);
+    }
 
-	__writecr4((__readcr4() & CR4_VMX_ENABLE_BIT));
+    // Setup VMX on region
+    // RevisionId MSB needs to be cleared
+    // To indicate VMCS shadowing is not supported
+    pContext->VmxOnRegion.RevisionId =  pContext->MsrRegisters.Basic.VmcsRevisionId;
+    pContext->VmxOnRegion.RevisionId &= ~(1 << 31);
+    pContext->PhysPVmxOn =              MmGetPhysicalAddress(&pContext->VmxOnRegion);
+    pContext->PhysPVmcs =               MmGetPhysicalAddress(&pContext->Vmcs);
 
-	SetupFixedControlBits();
+    EnterVmxOperation(pContext);
 
-	Status = SetupVmxOnRegion(pVmmContext);
+    SetupVmcs(pContext);
 
-	if (!NT_SUCCESS(Status))
-	{
-		DbgPrintEx(DPFLTR_IHVDRIVER_ID, 
-			DPFLTR_ERROR_LEVEL, 
-			"EnterVmxOperation: SetupVmxOnRegion failed.\n");
-		goto Exit;
-	}
-
-Exit:
-	return Status;
+    return STATUS_SUCCESS;
 }
 
 NTSTATUS SetupVtx()

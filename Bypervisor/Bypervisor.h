@@ -10,7 +10,7 @@
 // 16 MB
 #define VMM_HOST_STACK_SIZE         0x1000000
 
-// Standard sizes for PML4 (No PSE)
+// Standard sizes for zie page hierarchy (No PSE)
 #define PAGE_TABLE_SIZE             (1 << 9)
 #define PAGE_TABLE_ENTRY_SIZE       (1 << 12)
 
@@ -23,9 +23,35 @@ typedef PDPTE_64*       PPDPTE;
 typedef PDE_64*         PPDE;
 typedef PTE_64*         PPTE;
 
+typedef union _VMX_MSR_REGS
+{
+    REG64 Registers[17];
+    struct
+    {
+        IA32_VMX_BASIC_REGISTER             Basic;
+        IA32_VMX_PINBASED_CTLS_REGISTER     PinBased;
+        IA32_VMX_PROCBASED_CTLS_REGISTER    ProcBased;
+        IA32_VMX_PROCBASED_CTLS2_REGISTER   Proc2Based;
+        IA32_VMX_EXIT_CTLS_REGISTER         Exit;
+        IA32_VMX_ENTRY_CTLS_REGISTER        Entry;
+        IA32_VMX_MISC_REGISTER              Misc;
+        REG64                               FixedCr0_0;
+        REG64                               FixedCr0_1;
+        REG64                               FixedCr4_0;
+        REG64                               FixedCr4_1;
+        IA32_VMX_VMCS_ENUM_REGISTER         VmcsEnum;
+        IA32_VMX_PROCBASED_CTLS2_REGISTER   ProcBasedCtrls2;
+        IA32_VMX_EPT_VPID_CAP_REGISTER      EptVpidCap;
+        REG64                               TruePinBasedCtrls;
+        REG64                               TrueProcBasedCtrls;
+        REG64                               TrueExitCtrls;
+        REG64                               TrueEntryCtrls;
+    };
+} VMX_MSR_REGS, *PVMX_MSR_REGS;
+
 typedef struct _VMX_ON_REGION
 {
-	UINT32 RevisionNumber;
+	UINT32 RevisionId;
 } VMX_ON_REGION, *PVMX_ON_REGION;
 
 typedef struct _VMM_CONTEXT
@@ -33,9 +59,7 @@ typedef struct _VMM_CONTEXT
     UINT32			SystemProcessorCount;
     UINT32			ProcessorsInitialised;
     ULONG64			SystemDirectoryTableBase;
-
-	DECLSPEC_ALIGN(PAGE_SIZE) 
-	PVMX_ON_REGION	pVmxOnRegion;
+    
 } VMM_CONTEXT, *PVMM_CONTEXT;
 
 typedef struct _VMM_HOST_STACK
@@ -98,14 +122,20 @@ typedef struct _EPT_PAGE_TABLE
 
 typedef struct _VMM_PER_PROC_CONTEXT
 {
-    BOOLEAN          HasLaunched;
-    PVMCS            pVmcs;
-    PVOID            pPhysVmcs;
-    PMSRBMAP         pMsrBitmap;
-    PVOID            pPhysMsrBitmap;
-    REG_CAPTURE      RegisterCapture;
-    REG_SPEC_CAPTURE RegisterSpecCapture;
-    PEPT_PAGE_TABLE  pEpt;
-    PVOID            pPhysEpt;
-    PVMM_CONTEXT     pVmmContext;
-};
+    BOOLEAN             HasLaunched;
+    REG_CAPTURE         RegisterCapture;
+    REG_SPEC_CAPTURE    RegisterSpecCapture;
+    PEPT_PAGE_TABLE     pEpt;
+    PVOID               pPhysEpt;
+    PVMM_CONTEXT        pVmmContext;
+    VMX_MSR_REGS        MsrRegisters;
+
+    DECLSPEC_ALIGN(PAGE_SIZE)
+    VMX_ON_REGION       VmxOnRegion;
+
+    DECLSPEC_ALIGN(PAGE_SIZE)
+    VMCS                Vmcs;
+
+    PHYSICAL_ADDRESS    PhysPVmxOn;
+    PHYSICAL_ADDRESS    PhysPVmcs;
+} VMM_PER_PROC_CONTEXT, *PVMM_PER_PROC_CONTEXT;

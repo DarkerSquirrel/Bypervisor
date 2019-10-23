@@ -41,5 +41,8 @@
     <ClCompile Include="Bypervisor.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SetupVmm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
