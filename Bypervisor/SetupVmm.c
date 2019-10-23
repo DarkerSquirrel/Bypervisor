@@ -2,7 +2,9 @@
 
 PVMM_CONTEXT BypervisorContext = NULL;
 
-BOOLEAN ProbeVtx()
+BOOLEAN
+ProbeVtx(
+)
 {
     NTSTATUS Status = FALSE;
     int CpuIdOut[4];
@@ -43,7 +45,10 @@ Exit:
     return Status;
 }
 
-BOOLEAN SetupVmcs(PVMM_PER_PROC_CONTEXT pContext)
+BOOLEAN
+SetupVmcs(
+    _In_ PVMM_PER_PROC_CONTEXT pContext
+)
 {
     pContext->Vmcs.RevisionId = pContext->MsrRegisters.Basic.VmcsRevisionId;
     pContext->Vmcs.RevisionId &= ~(1 << 31);
@@ -51,7 +56,10 @@ BOOLEAN SetupVmcs(PVMM_PER_PROC_CONTEXT pContext)
     __vmx_vmwrite(VMCS_GUEST_VMCS_LINK_POINTER, ~0);
 }
 
-BOOLEAN EnterVmxOperation(PVMM_PER_PROC_CONTEXT pContext)
+BOOLEAN
+EnterVmxOperation(
+    _In_ PVMM_PER_PROC_CONTEXT pContext
+)
 {
     // Set CR4.VMXE
 	__writecr4((__readcr4() | CR4_VMX_ENABLE_BIT));
@@ -97,7 +105,9 @@ BOOLEAN EnterVmxOperation(PVMM_PER_PROC_CONTEXT pContext)
     return TRUE;
 }
 
-NTSTATUS InitialiseProcessorVmx()
+NTSTATUS 
+InitialiseProcessorVmx(
+)
 {
     PVMM_PER_PROC_CONTEXT pContext = ExAllocatePoolWithTag(NonPagedPoolNx, 
         sizeof(VMM_PER_PROC_CONTEXT),
@@ -136,7 +146,9 @@ NTSTATUS InitialiseProcessorVmx()
     return STATUS_SUCCESS;
 }
 
-NTSTATUS SetupVtx()
+NTSTATUS 
+SetupVtx(
+)
 {
     NTSTATUS Status = STATUS_UNSUCCESSFUL;
 

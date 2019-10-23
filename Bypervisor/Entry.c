@@ -5,8 +5,8 @@
 DRIVER_INITIALIZE DriverEntry;
 
 NTSTATUS DriverEntry(
-    PDRIVER_OBJECT pDriverObject,
-    PUNICODE_STRING pRegPath
+    _In_ PDRIVER_OBJECT  pDriverObject,
+    _In_ PUNICODE_STRING pRegPath
 )
 {
     UNREFERENCED_PARAMETER(pRegPath);
