@@ -33,6 +33,9 @@
     <ClInclude Include="ia32.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="BypervisorUtil.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Entry.c">
@@ -42,6 +45,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SetupVmm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BypervisorUtil.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

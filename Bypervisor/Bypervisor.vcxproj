@@ -140,11 +140,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Bypervisor.c" />
+    <ClCompile Include="BypervisorUtil.c" />
     <ClCompile Include="Entry.c" />
     <ClCompile Include="SetupVmm.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Bypervisor.h" />
+    <ClInclude Include="BypervisorUtil.h" />
     <ClInclude Include="ia32.h" />
     <ClInclude Include="Shared.h" />
   </ItemGroup>

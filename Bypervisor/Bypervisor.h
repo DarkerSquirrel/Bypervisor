@@ -77,7 +77,7 @@ typedef struct _REG_CAPTURE
     REG64 rdi;
     REG64 rbp;
     REG64 rsp;
-
+    
     REG64 r8;
     REG64 r9;
     REG64 r10;

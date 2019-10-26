@@ -1,4 +1,5 @@
 #include "Bypervisor.h"
+#include "BypervisorUtil.h"
 
 PVMM_CONTEXT BypervisorContext = NULL;
 
@@ -46,17 +47,6 @@ Exit:
 }
 
 BOOLEAN
-SetupVmcs(
-    _In_ PVMM_PER_PROC_CONTEXT pContext
-)
-{
-    pContext->Vmcs.RevisionId = pContext->MsrRegisters.Basic.VmcsRevisionId;
-    pContext->Vmcs.RevisionId &= ~(1 << 31);
-
-    __vmx_vmwrite(VMCS_GUEST_VMCS_LINK_POINTER, ~0);
-}
-
-BOOLEAN
 EnterVmxOperation(
     _In_ PVMM_PER_PROC_CONTEXT pContext
 )
@@ -101,6 +91,73 @@ EnterVmxOperation(
         __vmx_off();
         return FALSE;
     }
+
+    return TRUE;
+}
+
+// Whole routine is a joke
+BOOLEAN
+LoadAndSetupVmcs(
+    _In_ PVMM_PER_PROC_CONTEXT pContext
+)
+{
+    if (__vmx_vmclear(&pContext->PhysPVmcs))
+    {
+        __vmx_off();
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID,
+            DPFLTR_ERROR_LEVEL,
+            "LoadAndSetupVmcs: VMClear failed.\n");
+        return FALSE;
+    }
+
+    if (__vmx_vmptrld(&pContext->PhysPVmcs))
+    {
+        __vmx_off();
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID,
+            DPFLTR_ERROR_LEVEL,
+            "LoadAndSetupVmcs: Vmptrld failed.\n");
+        return FALSE;
+    }
+
+    pContext->Vmcs.RevisionId = pContext->MsrRegisters.Basic.VmcsRevisionId;
+    pContext->Vmcs.RevisionId &= ~(1 << 31);
+
+    // Do the meme where you gotta set 
+    // 1s if you don't support VMCS shadowing
+    __vmx_vmwrite(VMCS_GUEST_VMCS_LINK_POINTER, ~0);
+
+    // Do the meme where you gotta set
+    // reserved-bits in the pin-based ctrl
+    // Oh wait
+    // There's MORE.
+    // You gotta check bit 55 of the basic register.
+    if (IsTrueCapabilityMSRSupported(pContext))
+        __vmx_vmwrite(VMCS_CTRL_PIN_BASED_VM_EXECUTION_CONTROLS,
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TruePinBasedCtrls, 0));
+    else
+        __vmx_vmwrite(VMCS_CTRL_PIN_BASED_VM_EXECUTION_CONTROLS,
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.PinBased.Flags, 0));
+
+    if (IsTrueCapabilityMSRSupported(pContext))
+        __vmx_vmwrite(VMCS_CTRL_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueProcBasedCtrls, 0));
+    else
+        __vmx_vmwrite(VMCS_CTRL_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.ProcBased.Flags, 0));
+    
+    if (IsTrueCapabilityMSRSupported(pContext))
+        __vmx_vmwrite(VMCS_CTRL_VMENTRY_CONTROLS,
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueEntryCtrls, 0));
+    else
+        __vmx_vmwrite(VMCS_CTRL_VMENTRY_CONTROLS,
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.Entry.Flags, 0));
+
+    if (IsTrueCapabilityMSRSupported(pContext))
+        __vmx_vmwrite(VMCS_CTRL_VMEXIT_CONTROLS,
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueExitCtrls, 0));
+    else
+        __vmx_vmwrite(VMCS_CTRL_VMEXIT_CONTROLS,
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.Exit, 0));
 
     return TRUE;
 }
