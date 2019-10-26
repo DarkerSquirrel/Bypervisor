@@ -19,3 +19,13 @@ IsTrueCapabilityMSRSupported(
 {
     return pContext->MsrRegisters.Basic.VmxControls;
 }
+
+UINT64
+VmRead(
+    _In_ UINT64 Encoding
+)
+{
+    UINT64 Information;
+    __vmx_vmread(Encoding, &Information);
+    return Information;
+}

@@ -31,7 +31,6 @@ typedef union _VMX_MSR_REGS
         IA32_VMX_BASIC_REGISTER             Basic;
         IA32_VMX_PINBASED_CTLS_REGISTER     PinBased;
         IA32_VMX_PROCBASED_CTLS_REGISTER    ProcBased;
-        IA32_VMX_PROCBASED_CTLS2_REGISTER   Proc2Based;
         IA32_VMX_EXIT_CTLS_REGISTER         Exit;
         IA32_VMX_ENTRY_CTLS_REGISTER        Entry;
         IA32_VMX_MISC_REGISTER              Misc;

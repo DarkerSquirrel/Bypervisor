@@ -13,3 +13,9 @@ BOOLEAN
 IsTrueCapabilityMSRSupported(
     _In_ PVMM_PER_PROC_CONTEXT pContext
 );
+
+// Helper for __vmx_vmread()
+UINT64
+VmRead(
+    _In_ UINT64 Encoding
+);

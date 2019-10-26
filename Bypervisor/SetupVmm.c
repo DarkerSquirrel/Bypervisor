@@ -127,39 +127,58 @@ LoadAndSetupVmcs(
     __vmx_vmwrite(VMCS_GUEST_VMCS_LINK_POINTER, ~0);
 
     // Do the meme where you gotta set
-    // reserved-bits in the pin-based ctrl
+    // reserved-bits
     // Oh wait
     // There's MORE.
     // You gotta check bit 55 of the basic register.
     if (IsTrueCapabilityMSRSupported(pContext))
+    {
         __vmx_vmwrite(VMCS_CTRL_PIN_BASED_VM_EXECUTION_CONTROLS,
             EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TruePinBasedCtrls, 0));
+
+        __vmx_vmwrite(VMCS_CTRL_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueProcBasedCtrls, 0));
+
+        __vmx_vmwrite(VMCS_CTRL_VMENTRY_CONTROLS,
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueEntryCtrls, 0));
+
+        __vmx_vmwrite(VMCS_CTRL_VMEXIT_CONTROLS,
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueExitCtrls, 0));
+    }
     else
+    {
         __vmx_vmwrite(VMCS_CTRL_PIN_BASED_VM_EXECUTION_CONTROLS,
             EnforceCapabilityMSR((REG64)pContext->MsrRegisters.PinBased.Flags, 0));
 
-    if (IsTrueCapabilityMSRSupported(pContext))
-        __vmx_vmwrite(VMCS_CTRL_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
-            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueProcBasedCtrls, 0));
-    else
         __vmx_vmwrite(VMCS_CTRL_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
             EnforceCapabilityMSR((REG64)pContext->MsrRegisters.ProcBased.Flags, 0));
-    
-    if (IsTrueCapabilityMSRSupported(pContext))
-        __vmx_vmwrite(VMCS_CTRL_VMENTRY_CONTROLS,
-            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueEntryCtrls, 0));
-    else
+
         __vmx_vmwrite(VMCS_CTRL_VMENTRY_CONTROLS,
             EnforceCapabilityMSR((REG64)pContext->MsrRegisters.Entry.Flags, 0));
 
-    if (IsTrueCapabilityMSRSupported(pContext))
         __vmx_vmwrite(VMCS_CTRL_VMEXIT_CONTROLS,
-            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueExitCtrls, 0));
-    else
-        __vmx_vmwrite(VMCS_CTRL_VMEXIT_CONTROLS,
-            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.Exit, 0));
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.Exit.Flags, 0));
+
+        if (pContext->MsrRegisters.ProcBased.ActivateSecondaryControls)
+            __vmx_vmwrite(VMCS_CTRL_SECONDARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
+                EnforceCapabilityMSR((REG64)pContext->MsrRegisters.ProcBasedCtrls2.Flags, 0));
+    }
 
     return TRUE;
+}
+
+BOOLEAN 
+LaunchVmx(
+)
+{
+    __vmx_vmlaunch();
+
+    DbgPrintEx(DPFLTR_IHVDRIVER_ID,
+        DPFLTR_ERROR_LEVEL,
+        "LaunchVmx: Failed to launch - Error code => %llu", 
+        VmRead(VMCS_VM_INSTRUCTION_ERROR));
+
+    return FALSE;
 }
 
 NTSTATUS 
