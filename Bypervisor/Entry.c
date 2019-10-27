@@ -16,7 +16,7 @@ NTSTATUS DriverEntry(
     BOOLEAN DeviceCreated = FALSE;
     BOOLEAN SymlinkCreated = FALSE;
 
-    // First of all, create the hypervisor
+    // First of all, initialise the hypervisor
     Status = InitialiseHypervisor();
 
     if (!NT_SUCCESS(Status))

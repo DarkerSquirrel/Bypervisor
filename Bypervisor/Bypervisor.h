@@ -23,7 +23,7 @@ typedef PDPTE_64*       PPDPTE;
 typedef PDE_64*         PPDE;
 typedef PTE_64*         PPTE;
 
-typedef union _VMX_MSR_REGS
+typedef union
 {
     REG64 Registers[17];
     struct
@@ -66,7 +66,7 @@ typedef struct _VMM_HOST_STACK
     UINT8 Stack[VMM_HOST_STACK_SIZE];
 } VMM_HOST_STACK, *PVMM_HOST_STACK;
 
-typedef struct _REG_CAPTURE
+typedef struct _REG_CONTEXT
 {
     REG64 rax;
     REG64 rbx;
@@ -95,13 +95,15 @@ typedef struct _REG_CAPTURE
 
     REG64 rflags;
 
+    REG64 rip;
+
     SEGMENT_SELECTOR cs;
     SEGMENT_SELECTOR ds;
     SEGMENT_SELECTOR es;
     SEGMENT_SELECTOR fs;
     SEGMENT_SELECTOR gs;
     SEGMENT_SELECTOR ss;
-} REG_CAPTURE, *PREG_CAPTURE;
+} REG_CONTEXT, *PREG_CONTEXT;
 
 typedef struct _REG_SPEC_CAPTURE
 {
@@ -109,6 +111,13 @@ typedef struct _REG_SPEC_CAPTURE
     UINT64 cr2;
     UINT64 cr3;
     UINT64 cr4;
+
+    IA32_DEBUGCTL_REGISTER      DebugControl;
+    IA32_SYSENTER_CS_REGISTER   SysenterCs;
+    REG64                       SysenterEsp;
+    REG64                       SysenterEip;
+
+    UINT64                      gsBase;
 } REG_SPEC_CAPTURE, *PREG_SPEC_CAPTURE;
 
 typedef struct _EPT_PAGE_TABLE
@@ -122,7 +131,7 @@ typedef struct _EPT_PAGE_TABLE
 typedef struct _VMM_PER_PROC_CONTEXT
 {
     BOOLEAN             HasLaunched;
-    REG_CAPTURE         RegisterCapture;
+    REG_CONTEXT         RegisterCapture;
     REG_SPEC_CAPTURE    RegisterSpecCapture;
     PEPT_PAGE_TABLE     pEpt;
     PVOID               pPhysEpt;
@@ -138,3 +147,8 @@ typedef struct _VMM_PER_PROC_CONTEXT
     PHYSICAL_ADDRESS    PhysPVmxOn;
     PHYSICAL_ADDRESS    PhysPVmcs;
 } VMM_PER_PROC_CONTEXT, *PVMM_PER_PROC_CONTEXT;
+
+VOID
+CaptureContext(
+    _In_ PREG_CONTEXT RegisterCapture
+);

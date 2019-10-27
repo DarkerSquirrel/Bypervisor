@@ -126,6 +126,14 @@ LoadAndSetupVmcs(
     // 1s if you don't support VMCS shadowing
     __vmx_vmwrite(VMCS_GUEST_VMCS_LINK_POINTER, ~0);
 
+    UINT32 PrimaryProcBasedCtrls = IA32_VMX_PROCBASED_CTLS_RDTSC_EXITING_BIT |
+        IA32_VMX_PROCBASED_CTLS_ACTIVATE_SECONDARY_CONTROLS_BIT |
+        IA32_VMX_PROCBASED_CTLS_MOV_DR_EXITING_BIT;
+    UINT32 SecondaryProcBasedCtrls = 0;
+    UINT32 PinBasedCtrls = 0;
+    UINT32 VmEntryCtrls = IA32_VMX_ENTRY_CTLS_IA32E_MODE_GUEST_BIT;
+    UINT32 VmExitCtrls = IA32_VMX_EXIT_CTLS_HOST_ADDRESS_SPACE_SIZE_BIT;
+
     // Do the meme where you gotta set
     // reserved-bits
     // Oh wait
@@ -134,34 +142,34 @@ LoadAndSetupVmcs(
     if (IsTrueCapabilityMSRSupported(pContext))
     {
         __vmx_vmwrite(VMCS_CTRL_PIN_BASED_VM_EXECUTION_CONTROLS,
-            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TruePinBasedCtrls, 0));
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TruePinBasedCtrls, PinBasedCtrls));
 
         __vmx_vmwrite(VMCS_CTRL_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
-            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueProcBasedCtrls, 0));
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueProcBasedCtrls, PrimaryProcBasedCtrls));
 
         __vmx_vmwrite(VMCS_CTRL_VMENTRY_CONTROLS,
-            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueEntryCtrls, 0));
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueEntryCtrls, VmEntryCtrls));
 
         __vmx_vmwrite(VMCS_CTRL_VMEXIT_CONTROLS,
-            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueExitCtrls, 0));
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.TrueExitCtrls, VmExitCtrls));
     }
     else
     {
         __vmx_vmwrite(VMCS_CTRL_PIN_BASED_VM_EXECUTION_CONTROLS,
-            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.PinBased.Flags, 0));
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.PinBased.Flags, PinBasedCtrls));
 
         __vmx_vmwrite(VMCS_CTRL_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
-            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.ProcBased.Flags, 0));
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.ProcBased.Flags, PrimaryProcBasedCtrls));
 
         __vmx_vmwrite(VMCS_CTRL_VMENTRY_CONTROLS,
-            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.Entry.Flags, 0));
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.Entry.Flags, VmEntryCtrls));
 
         __vmx_vmwrite(VMCS_CTRL_VMEXIT_CONTROLS,
-            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.Exit.Flags, 0));
+            EnforceCapabilityMSR((REG64)pContext->MsrRegisters.Exit.Flags, VmExitCtrls));
 
         if (pContext->MsrRegisters.ProcBased.ActivateSecondaryControls)
             __vmx_vmwrite(VMCS_CTRL_SECONDARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
-                EnforceCapabilityMSR((REG64)pContext->MsrRegisters.ProcBasedCtrls2.Flags, 0));
+                EnforceCapabilityMSR((REG64)pContext->MsrRegisters.ProcBasedCtrls2.Flags, SecondaryProcBasedCtrls));
     }
 
     return TRUE;
